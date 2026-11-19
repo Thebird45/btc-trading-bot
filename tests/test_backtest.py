@@ -89,3 +89,14 @@ def test_yearly_breakdown_chains_years():
     assert y.loc[2023, "return"] == pytest.approx(0.5)
     assert y.loc[2024, "return"] == pytest.approx(0.2)  # 150 → 180
     assert y.loc[2024, "max_drawdown"] == pytest.approx(-0.2)  # 150 → 120
+
+
+def test_yearly_breakdown_close_at_new_year_belongs_to_previous_year():
+    eq = pd.Series(
+        [100.0, 110.0, 121.0],
+        index=pd.to_datetime(["2024-12-31 16:00", "2024-12-31 20:00", "2025-01-01 00:00"],
+                             utc=True),
+    )
+    y = yearly_breakdown(eq)
+    assert list(y.index) == [2024]
+    assert y.loc[2024, "return"] == pytest.approx(0.21)

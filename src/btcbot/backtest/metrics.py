@@ -106,9 +106,15 @@ def trade_metrics(net_returns: Sequence[float]) -> TradeMetrics:
 
 
 def yearly_breakdown(equity: pd.Series) -> pd.DataFrame:
-    """Retorno y drawdown máximo por año calendario."""
+    """Retorno y drawdown máximo por año calendario.
+
+    Los puntos de la curva están fechados al cierre de cada vela: un cierre a las
+    00:00 del 1 de enero pertenece a la última vela del año anterior.
+    """
+    years = (equity.index - pd.Timedelta(microseconds=1)).year.to_numpy().copy()
+    years[0] = equity.index[0].year  # el punto inicial es una apertura, no un cierre
     rows = []
-    for year, chunk in equity.groupby(equity.index.year):
+    for year, chunk in equity.groupby(years):
         # El año arranca desde el cierre del año anterior para no perder la primera vela
         prev = equity[equity.index < chunk.index[0]]
         base = pd.concat([prev.iloc[-1:], chunk]) if len(prev) else chunk

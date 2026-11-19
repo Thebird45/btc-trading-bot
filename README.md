@@ -17,8 +17,8 @@ Bot de trading para **BTC/USDT** en Binance Spot, escrito en Python. Va por fase
 |---|---|
 | 1. Alcance y entorno | ✅ Estructura, configuración, CI |
 | 2. Datos e indicadores | ✅ Descarga, validación e indicadores (EMA, SMA, RSI, MACD, ATR) |
-| 3. Estrategia base | ⏳ Pendiente |
-| 4. Backtesting | 🔄 Línea base buy & hold y métricas listas |
+| 3. Estrategia base | ✅ `ema_trend`: tendencia con EMAs + stop por ATR |
+| 4. Backtesting | 🔄 Motor con stops y costes, holdout reservado; falta walk-forward |
 | 5. Machine Learning | ⏳ Pendiente |
 | 6. Paper trading | ⏳ Pendiente |
 | 7. Revisión y piloto | ⏳ Pendiente |
@@ -55,6 +55,33 @@ uv run btcbot baseline --save               # guarda reports/baseline_buy_hold.m
 ```
 
 Comprar BTC y no tocarlo, con comisiones y deslizamiento incluidos. **Es la vara contra la que se mide el bot**: si una estrategia no le gana en retorno ajustado por riesgo (Sharpe, drawdown) fuera de muestra, no tiene sentido usarla. Resultado actual en [`reports/baseline_buy_hold.md`](reports/baseline_buy_hold.md).
+
+## Backtest de estrategias
+
+```bash
+uv run btcbot backtest                 # ema_trend, 2017 → 2024 (dentro de muestra)
+uv run btcbot backtest --risk 0.01     # probar otro riesgo por operación
+uv run btcbot backtest --save          # guarda informe .md y operaciones .csv en reports/
+uv run btcbot backtest --holdout       # SOLO para la prueba final (ver abajo)
+```
+
+El motor calcula la señal al cierre de cada vela y la ejecuta en la **apertura siguiente**. Revisa el stop dentro de la vela; si hay un gap por debajo del stop, sale a la apertura. Cobra comisión y deslizamiento en cada lado y dimensiona la posición para arriesgar un % fijo del capital, sin apalancamiento.
+
+**Periodo reservado (holdout): desde el 1 de enero de 2025.** No se usa para diseñar ni ajustar estrategias, solo para la evaluación final. Si se mira mientras se diseña, deja de ser una prueba honesta.
+
+### Primer resultado: `ema_trend` 2017–2024 (dentro de muestra)
+
+Parámetros estándar fijados antes de ver resultados (EMA 20/50, régimen EMA 200, stop 2,5×ATR), sin optimizar. Riesgo 0,5 % por operación. Informe completo en [`reports/backtest_ema_trend_insample.md`](reports/backtest_ema_trend_insample.md).
+
+| | Estrategia | Buy & hold |
+|---|---|---|
+| CAGR | 10,4 % | 51,9 % |
+| Sharpe | 1,46 | 0,94 |
+| Drawdown máximo | −9,3 % | −83,9 % |
+| Acierto | 28 % | — |
+| Profit factor | 2,31 | — |
+
+Gana menos en total, pero con mucho menos riesgo (mejor Sharpe y Calmar). Acierta solo el 28 % de las veces y aun así es rentable: las pérdidas son pequeñas (−4 %) y las ganancias grandes (+23 %). Con riesgo del 2 % por operación: CAGR 38,7 % y drawdown −30,5 %. **Todavía no es prueba de nada**: falta el walk-forward, comprobar la robustez de los parámetros y el holdout.
 
 ## Configuración
 
