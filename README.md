@@ -16,7 +16,7 @@ Bot de trading para **BTC/USDT** en Binance Spot, escrito en Python. Va por fase
 | Fase | Estado |
 |---|---|
 | 1. Alcance y entorno | ✅ Estructura, configuración, CI |
-| 2. Datos e indicadores | 🔄 Datos listos (descarga + validación); faltan indicadores |
+| 2. Datos e indicadores | ✅ Descarga, validación e indicadores (EMA, SMA, RSI, MACD, ATR) |
 | 3. Estrategia base | ⏳ Pendiente |
 | 4. Backtesting | 🔄 Línea base buy & hold y métricas listas |
 | 5. Machine Learning | ⏳ Pendiente |
