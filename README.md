@@ -16,7 +16,7 @@ Bot de trading para **BTC/USDT** en Binance Spot, escrito en Python. Va por fase
 | Fase | Estado |
 |---|---|
 | 1. Alcance y entorno | ✅ Estructura, configuración, CI |
-| 2. Datos e indicadores | ⏳ Pendiente |
+| 2. Datos e indicadores | 🔄 Datos listos (descarga + validación); faltan indicadores |
 | 3. Estrategia base | ⏳ Pendiente |
 | 4. Backtesting | ⏳ Pendiente |
 | 5. Machine Learning | ⏳ Pendiente |
@@ -34,6 +34,17 @@ uv sync
 uv run btcbot config   # muestra la configuración activa
 uv run pytest          # corre los tests
 ```
+
+## Datos
+
+```bash
+uv run btcbot download   # descarga BTC/USDT 4h desde 2017 (la 1.ª vez ~15 s); luego solo lo nuevo
+uv run btcbot validate   # revisa duplicados, huecos, OHLC incoherente y alineación
+```
+
+Las velas salen de la API pública de datos de mercado de Binance (no requiere claves) y se guardan en `data/BTCUSDT_4h.csv` con hora UTC. Solo se guardan velas cerradas.
+
+El histórico tiene 8 huecos conocidos (16 velas de 4h), por mantenimientos de Binance en 2018–2020. Se reportan como aviso y **no se rellenan**: inventar velas falsearía el backtest.
 
 ## Configuración
 
