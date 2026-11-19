@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Secretos: nunca subir claves
+.env
+*.key
+
+# Datos y resultados generados (se regeneran con los comandos)
+data/*
+!data/.gitkeep
+reports/*
+!reports/.gitkeep
+!reports/*.md
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Editor / SO
+.vscode/
+.idea/
+.DS_Store

@@ -1,0 +1,17 @@
+# Configuración base del bot. No poner secretos aquí: las claves API van en .env
+
+[market]
+exchange = "binance"
+symbol = "BTCUSDT"
+timeframe = "4h"
+# Primer día con datos de BTCUSDT en Binance
+history_start = "2017-08-17"
+
+[costs]
+# Comisión por lado (Binance Spot, nivel normal sin descuento BNB)
+fee_rate = 0.001
+# Deslizamiento estimado por lado, hipótesis conservadora
+slippage_rate = 0.0005
+
+[backtest]
+initial_capital = 1000.0
