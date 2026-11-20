@@ -20,7 +20,7 @@ Bot de trading para **BTC/USDT** en Binance Spot, escrito en Python. Va por fase
 | 3. Estrategia base | ✅ `ema_trend`: tendencia con EMAs + stop por ATR |
 | 4. Backtesting | ✅ Robustez, walk-forward y prueba final (holdout) aprobada por poco |
 | 5. Machine Learning | ⏳ Pendiente |
-| 6. Paper trading | 🔄 Motor listo (mismo broker que el backtest); faltan Telegram, web y despliegue |
+| 6. Paper trading | 🔄 Motor y Telegram listos; faltan web y despliegue |
 | 7. Revisión y piloto | ⏳ Pendiente |
 
 ## Instalación
@@ -131,7 +131,16 @@ uv run btcbot paper resume
 - **Misma lógica que el backtest**: ambos usan el mismo broker simulado (`backtest/broker.py`). Un test comprueba que, vela a vela, el paper trading da exactamente las mismas operaciones y la misma curva que el backtest.
 - **Estado en SQLite** (`data/paper.db`): cuenta, operaciones, curva de capital y registro de eventos. Cada vela se guarda en una transacción y, si el bot se reinicia, sigue donde quedó y recupera las velas que se perdió.
 - **Protecciones**: la pausa bloquea compras pero mantiene ventas y stops; límite de pérdida diaria del 3 %; si los datos llegan atrasados, no opera y avisa una sola vez.
-- **Avisos**: compras, ventas, stops, señales bloqueadas, errores y un resumen diario (después del cierre de las 00:00 UTC, 19:00 en Colombia). Por ahora salen en el log; Telegram viene en el siguiente PR.
+- **Avisos**: compras, ventas, stops, señales bloqueadas, errores y un resumen diario (después del cierre de las 00:00 UTC, 19:00 en Colombia), en el log y por Telegram.
+
+### Telegram
+
+1. En Telegram, habla con **@BotFather** → `/newbot` → copia el token.
+2. `cp .env.example .env` y pon el token en `TELEGRAM_BOT_TOKEN`.
+3. Escríbele `/start` a tu bot y corre `uv run btcbot telegram chat-id`; pon ese número en `TELEGRAM_CHAT_ID`.
+4. `uv run btcbot telegram test` envía un mensaje de prueba.
+
+Comandos: `/estado`, `/resumen` (desempeño frente a buy & hold), `/operaciones`, `/pausar`, `/reanudar` y `/ayuda`. **Solo responde al chat configurado**; los comandos de otros chats se ignoran. El token nunca se escribe en logs ni en errores.
 
 ## Configuración
 

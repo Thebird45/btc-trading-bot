@@ -22,6 +22,7 @@ from btcbot.backtest.research_report import robustness_report, walkforward_repor
 from btcbot.config import REPORTS_DIR, Config, load_config
 from btcbot.data.store import candles_path, load_candles, update_candles
 from btcbot.data.validate import validate_candles
+from btcbot.env import load_dotenv
 from btcbot.exchange.binance import fetch_klines
 from btcbot.strategies import STRATEGIES, build_signals
 from btcbot.timeframes import periods_per_year
@@ -58,7 +59,43 @@ def build_parser() -> argparse.ArgumentParser:
     pp = sub.add_parser("paper", help="Paper trading en vivo (dinero simulado)")
     pp.add_argument("action", choices=["run", "once", "status", "pause", "resume"],
                     help="run: loop continuo · once: una revisión · status/pause/resume")
+
+    tg = sub.add_parser("telegram", help="Configurar y probar Telegram")
+    tg.add_argument("action", choices=["chat-id", "test"],
+                    help="chat-id: muestra el id de tu chat · test: envía un mensaje de prueba")
     return parser
+
+
+def telegram_client():
+    import os
+
+    from btcbot.live.telegram import TelegramClient
+
+    token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    return (TelegramClient(token), os.environ.get("TELEGRAM_CHAT_ID", "")) if token else (None, "")
+
+
+def cmd_telegram(action: str) -> int:
+    client, chat_id = telegram_client()
+    if client is None:
+        print("Falta TELEGRAM_BOT_TOKEN en .env (créalo con @BotFather).")
+        return 1
+    if action == "chat-id":
+        updates = client.get_updates(None, timeout=0)
+        chats = {(u["message"]["chat"]["id"], u["message"]["chat"].get("first_name", ""))
+                 for u in updates if "message" in u}
+        if not chats:
+            print("No hay mensajes. Escríbele /start a tu bot en Telegram y repite el comando.")
+            return 1
+        for cid, name in chats:
+            print(f"chat_id: {cid}  ({name})  → pon TELEGRAM_CHAT_ID={cid} en .env")
+        return 0
+    if not chat_id:
+        print("Falta TELEGRAM_CHAT_ID en .env. Usa: uv run btcbot telegram chat-id")
+        return 1
+    client.send_message(chat_id, "✅ Prueba del bot BTC: Telegram funciona.")
+    print("Mensaje enviado.")
+    return 0
 
 
 def build_paper_trader(cfg: Config):
@@ -73,8 +110,14 @@ def build_paper_trader(cfg: Config):
                                lambda sym, tf, start: fetch_klines(sym, tf, start))
         return df
 
+    from btcbot.live.telegram import TelegramNotifier
+
+    notifiers = [LogNotifier()]
+    client, chat_id = telegram_client()
+    if client is not None and chat_id:
+        notifiers.append(TelegramNotifier(client, chat_id))
     store = PaperStore(cfg.paper.db_file())
-    return PaperTrader(cfg, store, MultiNotifier(LogNotifier()), source)
+    return PaperTrader(cfg, store, MultiNotifier(*notifiers), source)
 
 
 def cmd_paper(cfg: Config, action: str) -> int:
@@ -100,8 +143,28 @@ def cmd_paper(cfg: Config, action: str) -> int:
         stop = threading.Event()
         for sig in (signal.SIGINT, signal.SIGTERM):
             signal.signal(sig, lambda *_: stop.set())
+        start_telegram_commands(trader, stop)
         run_forever(trader, stop)
     return 0
+
+
+def start_telegram_commands(trader, stop) -> None:
+    import logging
+
+    from btcbot.live.telegram import TelegramCommands
+
+    client, chat_id = telegram_client()
+    if client is None or not chat_id:
+        logging.getLogger("btcbot").info("Telegram no configurado: solo avisos en el log.")
+        return
+    TelegramCommands(client, chat_id, {
+        "/estado": trader.status_text,
+        "/resumen": trader.performance_text,
+        "/operaciones": trader.trades_text,
+        "/pausar": lambda: trader.pause("Telegram"),
+        "/reanudar": lambda: trader.resume("Telegram"),
+    }).start(stop)
+    logging.getLogger("btcbot").info("Telegram activo: avisos y comandos.")
 
 
 def research_inputs(cfg: Config, strategy: str):
@@ -324,6 +387,7 @@ def cmd_validate(cfg: Config) -> int:
 
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
+    load_dotenv()
     cfg = load_config(args.config) if args.config else load_config()
 
     if args.command == "config":
@@ -342,6 +406,8 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(cmd_walkforward(cfg, args))
     elif args.command == "paper":
         sys.exit(cmd_paper(cfg, args.action))
+    elif args.command == "telegram":
+        sys.exit(cmd_telegram(args.action))
 
 
 if __name__ == "__main__":
