@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0b0e14">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="BTC Bot">
+  <title>BTC Bot</title>
+  <link rel="icon" href="/icon.svg">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand"><img src="/icon.svg" alt=""><span id="title">BTC Bot</span></div>
+      <div class="badges">
+        <span class="badge paper">PAPER</span>
+        <span class="badge" id="badge-run">…</span>
+        <span class="badge" id="badge-health">…</span>
+        <form method="post" action="/logout"><button class="link" type="submit">Salir</button></form>
+      </div>
+    </header>
+
+    <div id="not-ready" class="card empty" hidden>
+      El bot todavía no ha procesado ninguna vela. Esta página se actualiza sola.
+    </div>
+
+    <main id="content" hidden>
+      <section class="grid kpis">
+        <div class="card kpi">
+          <div class="label">Capital simulado</div>
+          <div class="value" id="k-equity">–</div>
+          <div class="sub" id="k-equity-sub">–</div>
+        </div>
+        <div class="card kpi">
+          <div class="label">Bot vs buy &amp; hold</div>
+          <div class="value" id="k-return">–</div>
+          <div class="sub" id="k-bh">–</div>
+        </div>
+        <div class="card kpi">
+          <div class="label">Caída máxima</div>
+          <div class="value" id="k-dd">–</div>
+          <div class="sub" id="k-dd-bh">–</div>
+        </div>
+        <div class="card kpi">
+          <div class="label">Operaciones</div>
+          <div class="value" id="k-trades">–</div>
+          <div class="sub" id="k-trades-sub">–</div>
+        </div>
+      </section>
+
+      <section class="grid two">
+        <div class="card">
+          <h2>Posición</h2>
+          <div class="rows" id="position"></div>
+        </div>
+        <div class="card">
+          <h2>Qué ve el bot</h2>
+          <div class="rows" id="market"></div>
+        </div>
+      </section>
+
+      <section class="card chart-card">
+        <h2>Capital: bot vs buy &amp; hold</h2>
+        <div class="legend">
+          <span><i class="dot bot"></i>Bot</span>
+          <span><i class="dot bh"></i>Buy &amp; hold (mismo capital inicial)</span>
+        </div>
+        <div class="chart-box"><canvas id="chart"></canvas></div>
+      </section>
+
+      <section class="grid two">
+        <div class="card">
+          <h2>Operaciones cerradas</h2>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Entrada</th><th>Salida</th><th>Resultado</th><th>Motivo</th></tr></thead>
+              <tbody id="trades"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="trades-empty" hidden>Todavía no hay operaciones cerradas.</div>
+        </div>
+        <div class="card">
+          <h2>Registro</h2>
+          <ul class="events" id="events"></ul>
+        </div>
+      </section>
+    </main>
+
+    <footer id="footer">Cargando…</footer>
+  </div>
+  <script src="/static/vendor/chart.umd.min.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
