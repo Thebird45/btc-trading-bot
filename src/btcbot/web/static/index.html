@@ -30,19 +30,24 @@
     </div>
 
     <main id="content" hidden>
+      <section class="card plain">
+        <h2>En palabras simples</h2>
+        <div id="plain"></div>
+      </section>
+
       <section class="grid kpis">
         <div class="card kpi">
-          <div class="label">Capital simulado</div>
+          <div class="label">Tu capital (simulado)</div>
           <div class="value" id="k-equity">–</div>
           <div class="sub" id="k-equity-sub">–</div>
         </div>
         <div class="card kpi">
-          <div class="label">Bot vs buy &amp; hold</div>
+          <div class="label">Ganancia del bot</div>
           <div class="value" id="k-return">–</div>
           <div class="sub" id="k-bh">–</div>
         </div>
         <div class="card kpi">
-          <div class="label">Caída máxima</div>
+          <div class="label">Peor bajón</div>
           <div class="value" id="k-dd">–</div>
           <div class="sub" id="k-dd-bh">–</div>
         </div>
@@ -55,22 +60,24 @@
 
       <section class="grid two">
         <div class="card">
-          <h2>Posición</h2>
+          <h2>¿Tiene BTC ahora?</h2>
           <div class="rows" id="position"></div>
         </div>
         <div class="card">
-          <h2>Qué ve el bot</h2>
+          <h2>¿Qué falta para comprar?</h2>
+          <ul class="checks" id="checks"></ul>
           <div class="rows" id="market"></div>
         </div>
       </section>
 
       <section class="card chart-card">
-        <h2>Capital: bot vs buy &amp; hold</h2>
+        <h2>Tu plata: con el bot vs solo comprar BTC</h2>
         <div class="legend">
-          <span><i class="dot bot"></i>Bot</span>
-          <span><i class="dot bh"></i>Buy &amp; hold (mismo capital inicial)</span>
+          <span><i class="dot bot"></i>Con el bot</span>
+          <span><i class="dot bh"></i>Si solo hubieras comprado BTC el primer día</span>
         </div>
         <div class="chart-box"><canvas id="chart"></canvas></div>
+        <p class="hint">Cuando la línea naranja queda plana, el bot está fuera del mercado (sin BTC): ni gana ni pierde.</p>
       </section>
 
       <section class="grid two">
@@ -78,14 +85,14 @@
           <h2>Operaciones cerradas</h2>
           <div class="table-scroll">
             <table>
-              <thead><tr><th>Entrada</th><th>Salida</th><th>Resultado</th><th>Motivo</th></tr></thead>
+              <thead><tr><th>Compró</th><th>Vendió</th><th>Resultado</th></tr></thead>
               <tbody id="trades"></tbody>
             </table>
           </div>
           <div class="empty" id="trades-empty" hidden>Todavía no hay operaciones cerradas.</div>
         </div>
         <div class="card">
-          <h2>Registro</h2>
+          <h2>Qué ha pasado (registro)</h2>
           <ul class="events" id="events"></ul>
         </div>
       </section>

@@ -69,57 +69,125 @@ function renderKpis(d) {
   const a = d.account;
   const m = d.metrics;
   setValue("k-equity", usd(a.equity));
-  $("k-equity-sub").textContent = `Inicial ${usd(a.initial)}`;
+  $("k-equity-sub").textContent = `Empezó con ${usd(a.initial)}`;
   setValue("k-return", pct(a["return"]), a["return"]);
-  $("k-bh").textContent = `Buy & hold: ${pct(a.bh_return)}`;
+  $("k-bh").textContent = `Solo comprar BTC: ${pct(a.bh_return)}`;
   setValue("k-dd", pct(a.max_drawdown, false), a.max_drawdown);
-  $("k-dd-bh").textContent = `Buy & hold: ${pct(a.bh_max_drawdown, false)}`;
+  $("k-dd-bh").textContent = `Lo máximo que cayó desde su mejor punto. Solo BTC: ${pct(a.bh_max_drawdown, false)}`;
   setValue("k-trades", String(m.trades));
-  $("k-trades-sub").textContent = m.trades
-    ? `Acierto ${pct(m.win_rate, false)} · PF ${num(m.profit_factor)}`
-    : `Tiempo invertido ${pct(a.exposure, false)}`;
+  if (m.trades) {
+    const wins = Math.round(m.win_rate * m.trades);
+    const pf = m.profit_factor == null ? "todo lo ganado" : `${num(m.profit_factor)} USDT`;
+    $("k-trades-sub").textContent = `Ganó ${wins} de ${m.trades}. Por cada 1 USDT perdido, ganó ${pf}`;
+  } else {
+    $("k-trades-sub").textContent = "Todavía no ha cerrado ninguna";
+  }
+}
+
+function para(...parts) {
+  const node = el("p");
+  for (const part of parts) {
+    node.append(Array.isArray(part) ? el("strong", part[0]) : document.createTextNode(part));
+  }
+  return node;
+}
+
+const day = (iso) =>
+  new Date(iso).toLocaleDateString("es-CO", { timeZone: tz, day: "numeric", month: "long" });
+
+function renderPlain(d) {
+  const a = d.account;
+  const s = d.status;
+  const m = d.snapshot || {};
+  const p = a.position;
+  const bhValue = a.initial * (1 + a.bh_return);
+  const better = a["return"] > a.bh_return;
+  const out = [
+    para(
+      `Desde el ${day(d.equity[0].t)} el bot pasó de ${usd(a.initial)} a `,
+      [`${usd(a.equity)} (${pct(a["return"])})`],
+      `. Si ese día hubieras comprado BTC y no lo tocaras, tendrías ${usd(bhValue)} (${pct(a.bh_return)}). `,
+      [better ? "Va mejor que solo comprar BTC." : "Por ahora va peor que solo comprar BTC."],
+    ),
+  ];
+  if (p) {
+    const going = p.unrealized_pnl >= 0 ? "ganando" : "perdiendo";
+    out.push(para(
+      `Ahora tiene BTC: compró a ${num(p.entry_price)} y va ${going} `,
+      [pct(Math.abs(p.unrealized_pct), false)],
+      `. Si el precio baja a ${num(p.stop)}, vende solo para cortar la pérdida. `,
+      "Si la tendencia se da vuelta antes, también vende.",
+    ));
+  } else if (s.pending_entry) {
+    out.push(para(["Acaba de ver una señal de compra"], ": compra al abrir la próxima vela."));
+  } else {
+    const parts = ["Ahora ", ["no tiene BTC"], ": espera a que el mercado vuelva a subir con fuerza."];
+    if (m.close != null && !m.regime_up) {
+      parts.push(` Para eso, el precio tendría que subir alrededor de ${pct(m.ema_regime / m.close - 1)} (hasta ~${num(m.ema_regime, 0)}).`);
+    }
+    out.push(para(...parts));
+  }
+  out.push(para(
+    s.paused ? "⏸ El bot está pausado: no comprará hasta que lo reanudes por Telegram. " : "",
+    `Revisa el mercado cada 4 horas; la próxima revisión es el ${when(s.next_close)}.`,
+  ));
+  $("plain").replaceChildren(...out);
 }
 
 function renderPosition(d) {
   const p = d.account.position;
   const s = d.status;
   if (!p) {
-    const waiting = s.pending_entry
-      ? "Compra programada para la próxima apertura"
-      : "Sin posición: esperando señal de compra";
     rows($("position"), [
-      ["Estado", waiting],
+      ["Respuesta", s.pending_entry ? "No, pero compra en la próxima apertura" : "No, está en efectivo"],
       ["Efectivo", usd(d.account.cash)],
-      ["Próxima vela cierra", when(s.next_close)],
+      ["Tiempo que ha tenido BTC", pct(d.account.exposure, false)],
     ]);
     return;
   }
   rows($("position"), [
-    ["BTC", num(p.units, 6)],
-    ["Entrada", `${num(p.entry_price)} · ${when(p.entry_time)}`],
-    ["Precio actual", num(p.last_price)],
-    ["Resultado abierto", `${pct(p.unrealized_pct)} (${num(p.unrealized_pnl)} USDT)`, cls(p.unrealized_pnl)],
-    ["Stop", `${num(p.stop)} (${pct(p.stop_distance_pct)})`, "down"],
-    ["Valor", usd(p.value)],
-    s.pending_exit ? ["Orden", "Venta programada para la próxima apertura", "down"] : ["Próxima vela", when(s.next_close)],
+    ["Respuesta", "Sí"],
+    ["Cantidad", `${num(p.units, 6)} BTC (${usd(p.value)})`],
+    ["Compró a", `${num(p.entry_price)} · ${when(p.entry_time)}`],
+    ["Precio ahora", num(p.last_price)],
+    ["Va", `${pct(p.unrealized_pct)} (${num(p.unrealized_pnl)} USDT)`, cls(p.unrealized_pnl)],
+    ["Vende solo si baja a", `${num(p.stop)} (${pct(p.stop_distance_pct)})`, "down"],
+    s.pending_exit ? ["Orden", "Vende en la próxima apertura", "down"] : ["Próxima revisión", when(s.next_close)],
   ]);
 }
 
 function renderMarket(d) {
   const m = d.snapshot || {};
   if (m.close == null) {
+    $("checks").replaceChildren();
     rows($("market"), [["Estado", "Sin datos todavía"]]);
     return;
   }
   const params = (d.strategy && d.strategy.params) || {};
+  const days = (n) => (n ? `≈${Math.round((n * 4) / 24)} días` : "");
+  const check = (ok, title, detail) => {
+    const li = el("li", `${ok ? "✅" : "❌"} ${title}`);
+    li.append(el("small", detail));
+    return li;
+  };
+  const gap = m.ema_regime / m.close - 1;
+  $("checks").replaceChildren(
+    check(
+      m.trend_up,
+      "El precio viene subiendo en los últimos días",
+      `Promedio corto (${days(params.fast)}): ${num(m.ema_fast, 0)} ${m.trend_up ? ">" : "<"} promedio medio (${days(params.slow)}): ${num(m.ema_slow, 0)}`,
+    ),
+    check(
+      m.regime_up,
+      "La tendencia de fondo es alcista",
+      `Precio ${num(m.close, 0)} ${m.regime_up ? ">" : "<"} promedio largo (${days(params.regime)}): ${num(m.ema_regime, 0)}` +
+        (m.regime_up ? "" : ` → falta subir ${pct(gap)}`),
+    ),
+  );
   rows($("market"), [
     ["BTC (último cierre)", num(m.close)],
-    ["Lectura", m.summary || "–"],
-    [`EMA rápida (${params.fast ?? "?"})`, num(m.ema_fast), m.trend_up ? "up" : "down"],
-    [`EMA lenta (${params.slow ?? "?"})`, num(m.ema_slow)],
-    [`EMA régimen (${params.regime ?? "?"})`, num(m.ema_regime), m.regime_up ? "up" : "down"],
-    ["Distancia de stop (ATR)", `${num(m.stop_distance)} (${pct(m.stop_distance / m.close, false)})`],
-    ["Compraría si", "EMA rápida > lenta y precio > EMA régimen"],
+    ["Si comprara ahora, vendería si baja", `${pct(m.stop_distance / m.close, false)} (a ${num(m.close - m.stop_distance, 0)})`],
+    ["Cuándo compra", "Cuando las dos se cumplen a la vez"],
   ]);
 }
 
@@ -139,8 +207,8 @@ function renderChart(d) {
     data: {
       labels,
       datasets: [
-        { label: "Bot", data: bot, borderColor: "#f7931a", borderWidth: 2, pointRadius: 0, tension: 0.15 },
-        { label: "Buy & hold", data: bh, borderColor: "#6c7a96", borderWidth: 1.5, pointRadius: 0, tension: 0.15 },
+        { label: "Con el bot", data: bot, borderColor: "#f7931a", borderWidth: 2, pointRadius: 0, tension: 0.15 },
+        { label: "Solo BTC", data: bh, borderColor: "#6c7a96", borderWidth: 1.5, pointRadius: 0, tension: 0.15 },
       ],
     },
     options: {
@@ -161,16 +229,20 @@ function renderChart(d) {
 }
 
 function renderTrades(d) {
-  const reasons = { stop: "Stop", signal: "Señal", manual: "Manual", end: "Fin" };
-  const body = $("trades");
-  body.replaceChildren(
+  const reasons = { stop: "vendió por stop", signal: "vendió por señal", manual: "venta manual", end: "fin" };
+  const cell = (...lines) => {
+    const td = el("td");
+    lines.forEach(([text, className]) => td.append(el("span", text, className)));
+    return td;
+  };
+  $("trades").replaceChildren(
     ...d.trades.map((t) => {
       const tr = el("tr");
       tr.append(
-        el("td", `${when(t.entry_time)}\n${num(t.entry_price)}`),
-        el("td", `${when(t.exit_time)}\n${num(t.exit_price)}`),
-        el("td", `${pct(t.net_return)} (${num(t.pnl)})`, cls(t.pnl)),
-        el("td", reasons[t.exit_reason] || t.exit_reason),
+        cell([when(t.entry_time), "line"], [num(t.entry_price, 0), "line"]),
+        cell([when(t.exit_time), "line"], [num(t.exit_price, 0), "line"]),
+        cell([`${pct(t.net_return)} (${num(t.pnl)})`, `line ${cls(t.pnl)}`],
+             [reasons[t.exit_reason] || t.exit_reason, "line"]),
       );
       return tr;
     }),
@@ -202,6 +274,7 @@ async function refresh() {
     $("content").hidden = !d.ready;
     if (d.ready) {
       renderStatus(d);
+      renderPlain(d);
       renderKpis(d);
       renderPosition(d);
       renderMarket(d);
