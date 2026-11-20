@@ -18,7 +18,7 @@ Bot de trading para **BTC/USDT** en Binance Spot, escrito en Python. Va por fase
 | 1. Alcance y entorno | ✅ Estructura, configuración, CI |
 | 2. Datos e indicadores | ✅ Descarga, validación e indicadores (EMA, SMA, RSI, MACD, ATR) |
 | 3. Estrategia base | ✅ `ema_trend`: tendencia con EMAs + stop por ATR |
-| 4. Backtesting | ✅ Motor con stops y costes, robustez de parámetros y walk-forward; holdout pendiente |
+| 4. Backtesting | ✅ Robustez, walk-forward y prueba final (holdout) aprobada por poco |
 | 5. Machine Learning | ⏳ Pendiente |
 | 6. Paper trading | ⏳ Pendiente |
 | 7. Revisión y piloto | ⏳ Pendiente |
@@ -71,17 +71,17 @@ El motor calcula la señal al cierre de cada vela y la ejecuta en la **apertura 
 
 ### Primer resultado: `ema_trend` 2017–2024 (dentro de muestra)
 
-Parámetros estándar fijados antes de ver resultados (EMA 20/50, régimen EMA 200, stop 2,5×ATR), sin optimizar. Riesgo 0,5 % por operación. Informe completo en [`reports/backtest_ema_trend_insample.md`](reports/backtest_ema_trend_insample.md).
+Parámetros estándar fijados antes de ver resultados (EMA 20/50, régimen EMA 200, stop 2,5×ATR), sin optimizar. Riesgo 1 % por operación (configuración final). Informe completo en [`reports/backtest_ema_trend_insample.md`](reports/backtest_ema_trend_insample.md).
 
 | | Estrategia | Buy & hold |
 |---|---|---|
-| CAGR | 10,4 % | 51,9 % |
-| Sharpe | 1,46 | 0,94 |
-| Drawdown máximo | −9,3 % | −83,9 % |
+| CAGR | 20,8 % | 51,9 % |
+| Sharpe | 1,49 | 0,94 |
+| Drawdown máximo | −17,3 % | −83,9 % |
 | Acierto | 28 % | — |
 | Profit factor | 2,31 | — |
 
-Gana menos en total, pero con mucho menos riesgo (mejor Sharpe y Calmar). Acierta solo el 28 % de las veces y aun así es rentable: las pérdidas son pequeñas (−4 %) y las ganancias grandes (+23 %). Con riesgo del 2 % por operación: CAGR 38,7 % y drawdown −30,5 %. Por sí solo esto no prueba nada; ver la validación de abajo.
+Gana menos en total, pero con mucho menos riesgo (mejor Sharpe y Calmar). Acierta solo el 28 % de las veces y aun así es rentable: las pérdidas son pequeñas (−4 %) y las ganancias grandes (+23 %). Con riesgo del 0,5 %: CAGR 10,4 % y drawdown −9,3 %; con 2 %: CAGR 38,7 % y drawdown −30,5 %. Por sí solo esto no prueba nada; ver la validación de abajo.
 
 ## Validación: robustez y walk-forward
 
@@ -103,6 +103,20 @@ La rejilla y las ventanas están en `config/default.toml` y se fijaron antes de 
 | Drawdown máximo | −11,0 % | −9,3 % | −77,0 % |
 
 Optimizar no mejora el Sharpe frente a los parámetros fijos, y la combinación elegida cambia en casi cada reentrenamiento. Conclusión: **mantener parámetros fijos y simples**; reoptimizar solo agrega riesgo de sobreajuste. El optimizador siempre eligió el stop más ajustado de la rejilla (1,5×ATR): sube el CAGR porque, con el mismo riesgo, permite posiciones más grandes.
+
+## Prueba final (holdout 2025–2026)
+
+Los criterios de aprobación se escribieron y se subieron **antes** de ejecutarla: [`docs/criterios_holdout.md`](docs/criterios_holdout.md). Se ejecutó una sola vez, el 20 de noviembre de 2026.
+
+| | Estrategia | Buy & hold |
+|---|---|---|
+| Retorno total | +4,4 % | −34,0 % |
+| CAGR | 2,3 % | −19,8 % |
+| Sharpe | 0,28 | −0,30 |
+| Drawdown máximo | −11,4 % | −53,5 % |
+| Profit factor | 1,18 | — |
+
+**Aprueba los 4 criterios, pero por poco.** En un mercado bajista protegió el capital, aunque ganó poco: menos que un producto de ahorro. Con 35 operaciones, la expectativa no se distingue estadísticamente de cero. Este periodo ya está usado; la siguiente evidencia tiene que venir del paper trading.
 
 ## Configuración
 
