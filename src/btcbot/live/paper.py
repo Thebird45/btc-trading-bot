@@ -270,6 +270,44 @@ class PaperTrader:
         self.store.add_event(pd.Timestamp.now(tz="UTC"), "info", "resume", msg)
         return msg
 
+    def performance_text(self) -> str:
+        from btcbot.backtest.metrics import max_drawdown, trade_metrics
+
+        eq = self.store.equity()
+        if len(eq) < 2:
+            return "Todavía no hay suficiente historial para un resumen."
+        trades = self.store.trades()
+        tm = trade_metrics(trades["net_return"].tolist())
+        curve, closes = eq["equity"], eq["close"]
+        bh = closes.iloc[-1] / closes.iloc[0] - 1
+        days = (eq.index[-1] - eq.index[0]) / pd.Timedelta(days=1)
+        lines = [
+            f"📊 Desempeño desde {self.local(eq.index[0])} ({days:.0f} días)",
+            f"Capital: {usd(curve.iloc[-1])} ({pct(curve.iloc[-1] / curve.iloc[0] - 1)})",
+            f"Buy & hold en el mismo periodo: {pct(bh)}",
+            f"Caída máxima: {max_drawdown(curve) * 100:.2f} % "
+            f"(buy & hold: {max_drawdown(closes) * 100:.2f} %)",
+            f"Operaciones cerradas: {tm.trades}",
+        ]
+        if tm.trades:
+            lines += [
+                f"Acierto: {tm.win_rate:.0%} · Profit factor: {tm.profit_factor:.2f}",
+                f"Ganancia media: {pct(tm.avg_win)} · Pérdida media: {pct(tm.avg_loss)}",
+            ]
+        return "\n".join(lines)
+
+    def trades_text(self, n: int = 5) -> str:
+        trades = self.store.trades()
+        if trades.empty:
+            return "Todavía no hay operaciones cerradas."
+        reasons = {"stop": "🛑 stop", "signal": "🔴 señal", "manual": "✋ manual"}
+        lines = [f"Últimas {min(n, len(trades))} operaciones:"]
+        for t in trades.tail(n).iloc[::-1].itertuples():
+            lines.append(f"{self.local(t.entry_time)} → {self.local(t.exit_time)}: "
+                         f"{pct(t.net_return)} ({t.pnl:+,.2f} USDT) · "
+                         f"{reasons.get(t.exit_reason, t.exit_reason)}")
+        return "\n".join(lines)
+
     def status_text(self) -> str:
         state = self.store.load_state()
         if state is None:

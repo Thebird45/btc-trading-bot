@@ -171,3 +171,13 @@ def test_store_transaction_rolls_back(tmp_path):
         store.set("a", 1)
         raise RuntimeError("fallo a mitad")
     assert store.get("a") is None
+
+
+def test_performance_and_trades_text(tmp_path, candles):
+    trader, store, _ = make_trader(tmp_path, candles)
+    assert "Todavía" in trader.trades_text()
+    for i in range(300, len(candles)):
+        trader.tick(after_close(candles, i))
+    perf = trader.performance_text()
+    assert "Buy & hold" in perf and "Profit factor" in perf
+    assert trader.trades_text().startswith("Últimas 5 operaciones")
