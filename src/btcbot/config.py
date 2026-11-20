@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -32,10 +32,24 @@ class BacktestConfig:
 
 
 @dataclass(frozen=True)
+class ValidationConfig:
+    holdout_start: str
+
+
+@dataclass(frozen=True)
+class RiskConfig:
+    risk_per_trade: float
+    max_position_fraction: float
+
+
+@dataclass(frozen=True)
 class Config:
     market: MarketConfig
     costs: CostsConfig
     backtest: BacktestConfig
+    validation: ValidationConfig
+    risk: RiskConfig
+    strategy: dict[str, dict] = field(default_factory=dict)
 
 
 def load_config(path: Path | str = DEFAULT_CONFIG) -> Config:
@@ -45,4 +59,7 @@ def load_config(path: Path | str = DEFAULT_CONFIG) -> Config:
         market=MarketConfig(**raw["market"]),
         costs=CostsConfig(**raw["costs"]),
         backtest=BacktestConfig(**raw["backtest"]),
+        validation=ValidationConfig(**raw["validation"]),
+        risk=RiskConfig(**raw["risk"]),
+        strategy=raw.get("strategy", {}),
     )

@@ -15,3 +15,22 @@ slippage_rate = 0.0005
 
 [backtest]
 initial_capital = 1000.0
+
+[validation]
+# Periodo final reservado (fuera de muestra). No se usa para diseñar ni ajustar
+# estrategias: solo para la evaluación final con `btcbot backtest --holdout`.
+holdout_start = "2025-01-01"
+
+[risk]
+# Fracción del capital que se arriesga por operación (distancia entrada → stop)
+risk_per_trade = 0.005
+# Máxima fracción del capital invertida en una posición (1.0 = sin apalancamiento)
+max_position_fraction = 1.0
+
+# Parámetros fijados ANTES de ver resultados (valores estándar, sin optimizar)
+[strategy.ema_trend]
+fast = 20
+slow = 50
+regime = 200
+atr_period = 14
+stop_atr = 2.5
