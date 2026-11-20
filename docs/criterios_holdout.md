@@ -23,3 +23,23 @@ Se vuelve a investigación. **No** se ajustan los parámetros mirando el holdout
 ## Limitación conocida
 
 Son unos 23 meses: se esperan alrededor de 30 operaciones, una muestra chica. Aprobar significa "no hay evidencia en contra", no "está demostrado". Por eso después viene el paper trading.
+
+---
+
+# Resultado (ejecutado una sola vez, 20 de noviembre de 2026)
+
+Periodo: 2025-01-01 → 2026-11-20. Informe completo en [`reports/backtest_ema_trend_holdout.md`](../reports/backtest_ema_trend_holdout.md).
+
+| Criterio | Resultado | ¿Cumple? |
+|---|---|---|
+| 1. Profit factor > 1 | 1,18 | ✅ |
+| 2. Sharpe > buy & hold | 0,28 vs −0,30 | ✅ |
+| 3. Drawdown ≤ 25 % | −11,4 % (buy & hold: −53,5 %) | ✅ |
+| 4. Sin errores de ejecución | 35 operaciones sin solapes, stops bajo la entrada, fechas coherentes | ✅ |
+
+**Veredicto: aprueba, pero por poco.** Lectura honesta:
+
+- **Su valor en este periodo fue proteger el capital, no ganar.** BTC cayó un 34 % y la estrategia terminó en +4,4 %, con una caída máxima de −11 % frente a −53 %.
+- **La ganancia es débil.** Un CAGR de 2,3 % es menos de lo que rinde un CDT o USDT en un producto de ahorro. La expectativa por operación (+0,30 %) no se distingue estadísticamente de cero (t = 0,28 con 35 operaciones).
+- **El patrón se mantuvo**: un 28,6 % de acierto, igual que dentro de muestra (28,3 %). Pero la ganancia media cayó de +23 % a +6,8 %, porque en un mercado bajista y lateral las tendencias son cortas.
+- Este periodo ya está usado. Desde ahora, la única evidencia nueva es el paper trading con datos en vivo.
