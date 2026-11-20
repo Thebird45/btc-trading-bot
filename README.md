@@ -20,7 +20,7 @@ Bot de trading para **BTC/USDT** en Binance Spot, escrito en Python. Va por fase
 | 3. Estrategia base | ✅ `ema_trend`: tendencia con EMAs + stop por ATR |
 | 4. Backtesting | ✅ Robustez, walk-forward y prueba final (holdout) aprobada por poco |
 | 5. Machine Learning | ⏳ Pendiente |
-| 6. Paper trading | 🔄 Motor, Telegram y web listos; falta despliegue |
+| 6. Paper trading | 🔄 Todo listo para desplegar en Oracle Cloud ([guía](docs/despliegue.md)) |
 | 7. Revisión y piloto | ⏳ Pendiente |
 
 ## Instalación
@@ -158,6 +158,15 @@ Panel responsive (celular y PC; en el celular se puede agregar a la pantalla de 
 - Estado: activo o pausado, si los datos están al día y si el bot dejó de responder.
 
 **Seguridad**: login con contraseña (hash PBKDF2), cookie de sesión firmada (`HttpOnly`, `SameSite=Strict`), bloqueo de 15 minutos tras 5 intentos fallidos y cabeceras CSP estrictas, sin scripts externos. La web es **de solo lectura**: los controles están en Telegram.
+
+## Despliegue (24/7)
+
+Docker Compose con tres servicios: **bot** (paper trading + Telegram), **web** y **Caddy** (HTTPS automático con Let's Encrypt). Paso a paso para Oracle Cloud Always Free en [`docs/despliegue.md`](docs/despliegue.md).
+
+```bash
+bash deploy/setup-vm.sh   # una vez en la VM: Docker, firewall, swap, respaldos diarios
+bash deploy/update.sh     # arrancar / actualizar a la última versión de main
+```
 
 ## Configuración
 

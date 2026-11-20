@@ -1,0 +1,45 @@
+# Despliegue: bot de paper trading + web de seguimiento + Caddy (HTTPS automático).
+# Requiere un archivo .env (ver .env.example) con DOMAIN, Telegram y la contraseña de la web.
+
+x-app: &app
+  build: .
+  image: btcbot:latest
+  env_file:
+    - path: .env
+      required: false
+  volumes:
+    - ./data:/app/data
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "3" }
+
+services:
+  bot:
+    <<: *app
+    command: ["btcbot", "paper", "run"]
+
+  web:
+    <<: *app
+    command: ["btcbot", "web", "run", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      WEB_SECURE_COOKIES: "1"
+      WEB_TRUST_PROXY: "1"
+    expose: ["8000"]
+    depends_on: [bot]
+
+  caddy:
+    image: caddy:2.8.4
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [web]
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
