@@ -50,3 +50,16 @@ test_months = 6
 first_test = "2019-07-01"
 # Combinaciones con menos operaciones en el entrenamiento no se consideran
 min_train_trades = 10
+
+[paper]
+# Base de datos con el estado del bot, operaciones, curva de capital y eventos
+db_path = "data/paper.db"
+initial_capital = 1000.0
+# Si el capital cae este % desde el inicio del día (UTC), no se abren compras ese día
+daily_loss_limit = 0.03
+# Si la última vela cerrada llega con más de N velas de atraso, el bot no opera
+max_stale_candles = 2
+# Cada cuántos segundos revisa si cerró una vela nueva
+poll_seconds = 30
+# Zona horaria para mostrar fechas en avisos y en la web
+display_tz = "America/Bogota"

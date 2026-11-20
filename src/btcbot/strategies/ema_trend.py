@@ -46,3 +46,29 @@ def ema_trend_signals(candles: pd.DataFrame, params: EmaTrendParams) -> pd.DataF
         {"entry": entry, "exit": exit_, "stop_distance": stop_distance},
         index=candles.index,
     )
+
+
+def ema_trend_snapshot(candles: pd.DataFrame, params: EmaTrendParams) -> dict:
+    """Valores de la última vela cerrada, para explicar qué está viendo el bot."""
+    close = candles["close"]
+    fast = ema(close, params.fast).iloc[-1]
+    slow = ema(close, params.slow).iloc[-1]
+    regime = ema(close, params.regime).iloc[-1]
+    atr_now = atr(candles, params.atr_period).iloc[-1]
+    price = float(close.iloc[-1])
+    return {
+        "close": price,
+        "ema_fast": float(fast),
+        "ema_slow": float(slow),
+        "ema_regime": float(regime),
+        "atr": float(atr_now),
+        "stop_distance": float(params.stop_atr * atr_now),
+        "trend_up": bool(fast > slow),
+        "regime_up": bool(price > regime),
+        "summary": (
+            ("Tendencia corta alcista" if fast > slow else "Tendencia corta bajista")
+            + " · "
+            + ("precio sobre la EMA de régimen" if price > regime
+               else "precio bajo la EMA de régimen")
+        ),
+    }
