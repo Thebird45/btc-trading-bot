@@ -3,6 +3,9 @@
 const REFRESH_MS = 60_000;
 let chart = null;
 let tz = "America/Bogota";
+let marketChart = null;
+let lastDashboard = null;
+const MARKET_MS = 30_000;
 
 const $ = (id) => document.getElementById(id);
 
@@ -272,6 +275,7 @@ async function refresh() {
     $("title").textContent = `BTC Bot · ${d.symbol} ${d.timeframe}`;
     $("not-ready").hidden = d.ready;
     $("content").hidden = !d.ready;
+    lastDashboard = d.ready ? d : null;
     if (d.ready) {
       renderStatus(d);
       renderPlain(d);
@@ -289,5 +293,105 @@ async function refresh() {
   }
 }
 
-refresh();
+function tradeMarkers(t0) {
+  const d = lastDashboard;
+  const buys = [];
+  const sells = [];
+  let stop = null;
+  if (!d) return { buys, sells, stop };
+  for (const t of d.trades) {
+    const entry = Date.parse(t.entry_time);
+    const exit = Date.parse(t.exit_time);
+    if (entry >= t0) buys.push({ x: entry, y: t.entry_price });
+    if (exit >= t0) sells.push({ x: exit, y: t.exit_price });
+  }
+  const p = d.account.position;
+  if (p) {
+    const entry = Date.parse(p.entry_time);
+    if (entry >= t0) buys.push({ x: entry, y: p.entry_price });
+    stop = p.stop;
+  }
+  return { buys, sells, stop };
+}
+
+function renderMarketChart(m) {
+  const c = m.candles;
+  const pts = (arr) => c.t.map((x, i) => ({ x, y: arr[i] }));
+  const { buys, sells, stop } = tradeMarkers(c.t[0]);
+  const last = c.t[c.t.length - 1];
+  const datasets = [
+    { label: "Precio", data: pts(c.close), borderColor: "#e6e9ef", borderWidth: 2, pointRadius: 0, tension: 0.1, order: 2 },
+    { label: `Promedio corto (${c.periods.fast})`, data: pts(c.fast), borderColor: "#4fc3f7", borderWidth: 1.2, pointRadius: 0, order: 3 },
+    { label: `Promedio medio (${c.periods.slow})`, data: pts(c.slow), borderColor: "#b388ff", borderWidth: 1.2, pointRadius: 0, order: 3 },
+    { label: `Promedio largo (${c.periods.regime})`, data: pts(c.regime), borderColor: "#f5c542", borderWidth: 1.5, pointRadius: 0, order: 3 },
+    { type: "scatter", label: "Compró", data: buys, backgroundColor: "#2ecc71", pointStyle: "triangle", pointRadius: 8, order: 1 },
+    { type: "scatter", label: "Vendió", data: sells, backgroundColor: "#ff5c5c", pointStyle: "triangle", rotation: 180, pointRadius: 8, order: 1 },
+  ];
+  if (stop) {
+    datasets.push({ label: "Stop", data: [{ x: c.t[0], y: stop }, { x: last, y: stop }],
+      borderColor: "#ff5c5c", borderDash: [6, 4], borderWidth: 1, pointRadius: 0, order: 4 });
+  }
+  if (marketChart) {
+    marketChart.data.datasets = datasets;
+    marketChart.update("none");
+    return;
+  }
+  marketChart = new Chart($("market-chart"), {
+    type: "line",
+    data: { datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      interaction: { mode: "nearest", axis: "x", intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          filter: (item) => item.parsed.y != null,
+          callbacks: {
+            title: (items) => (items.length ? when(new Date(items[0].parsed.x).toISOString()) : ""),
+            label: (item) => `${item.dataset.label}: ${num(item.parsed.y)}`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          type: "linear",
+          ticks: {
+            color: "#8b93a7", maxTicksLimit: 6, maxRotation: 0,
+            callback: (v) => new Date(v).toLocaleDateString("es-CO", { timeZone: tz, day: "numeric", month: "short" }),
+          },
+          grid: { color: "#1c2333" },
+        },
+        y: { ticks: { color: "#8b93a7" }, grid: { color: "#1c2333" } },
+      },
+    },
+  });
+}
+
+async function refreshMarket() {
+  try {
+    const res = await fetch("/api/market", { cache: "no-store" });
+    if (res.status === 401) {
+      location.href = "/login";
+      return;
+    }
+    const m = await res.json();
+    const dot = document.querySelector(".pulse");
+    if (!m.ok) {
+      dot.classList.add("off");
+      $("live-hint").textContent = m.error;
+      return;
+    }
+    dot.classList.remove("off");
+    $("live-price").textContent = `${num(m.price)} USDT`;
+    setValue("live-change", `${pct(m.change_24h)} en 24 h`, m.change_24h);
+    renderMarketChart(m);
+  } catch (err) {
+    $("live-hint").textContent = `No se pudo actualizar el precio (${err.message}).`;
+  }
+}
+
+refresh().then(refreshMarket);
 setInterval(refresh, REFRESH_MS);
+setInterval(refreshMarket, MARKET_MS);

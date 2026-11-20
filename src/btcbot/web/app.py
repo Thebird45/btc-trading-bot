@@ -16,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from btcbot.config import Config
 from btcbot.web.auth import LoginLimiter, SessionSigner, verify_password
 from btcbot.web.dashboard import build_dashboard
+from btcbot.web.market import MarketFeed
 
 STATIC = Path(__file__).parent / "static"
 COOKIE = "btcbot_session"
@@ -41,12 +42,14 @@ class WebSettings:
     trust_proxy: bool = False
 
 
-def create_app(cfg: Config, settings: WebSettings, db_path: Path | None = None) -> FastAPI:
+def create_app(cfg: Config, settings: WebSettings, db_path: Path | None = None,
+               market: MarketFeed | None = None) -> FastAPI:
     if not settings.password_hash:
         raise ValueError("Falta WEB_PASSWORD_HASH (genéralo con: btcbot web hash-password)")
     db_path = db_path or cfg.paper.db_file()
     signer = SessionSigner(settings.session_secret, settings.session_hours * 3600)
     limiter = LoginLimiter()
+    market = market or MarketFeed(cfg)
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 
     def client_ip(request: Request) -> str:
@@ -105,6 +108,10 @@ def create_app(cfg: Config, settings: WebSettings, db_path: Path | None = None) 
     @app.get("/api/dashboard")
     def dashboard():
         return build_dashboard(cfg, db_path)
+
+    @app.get("/api/market")
+    def market_data():
+        return market.snapshot()
 
     @app.get("/manifest.webmanifest")
     def manifest():

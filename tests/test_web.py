@@ -158,3 +158,57 @@ def test_dashboard_alive_flag(populated):
     cfg, db = populated
     d = build_dashboard(cfg, db, now=pd.Timestamp.now(tz="UTC") + pd.Timedelta(days=10))
     assert d["status"]["alive"] is False
+
+
+# --- mercado en vivo -------------------------------------------------------------------
+
+def fake_binance(calls, fail=False):
+    import httpx
+
+    def handler(request):
+        calls.append(request.url.path)
+        if fail:
+            raise httpx.ConnectError("sin red")
+        if request.url.path.endswith("/ticker/24hr"):
+            return httpx.Response(200, json={"lastPrice": "60000.5", "priceChangePercent": "-2.5",
+                                             "highPrice": "61000", "lowPrice": "59000"})
+        n = int(request.url.params["limit"])
+        t0 = 1_700_000_000_000
+        rows = [[t0 + i * 14_400_000, "100", "101", "99", str(100 + i * 0.1), "1",
+                 t0 + (i + 1) * 14_400_000 - 1, "100", 5, "0.5", "50", "0"] for i in range(n)]
+        return httpx.Response(200, json=rows)
+
+    return httpx.Client(base_url="https://test", transport=httpx.MockTransport(handler))
+
+
+def test_market_feed_snapshot_and_cache(populated):
+    from btcbot.web.market import SHOW, MarketFeed
+
+    calls, now = [], [0.0]
+    feed = MarketFeed(populated[0], client=fake_binance(calls), clock=lambda: now[0])
+    m = feed.snapshot()
+    assert m["ok"] and m["price"] == 60000.5 and m["change_24h"] == -0.025
+    assert len(m["candles"]["t"]) == SHOW and m["candles"]["regime"][-1] is not None
+    feed.snapshot()
+    assert len(calls) == 2  # segunda llamada sale de la caché
+    now[0] = 100
+    feed.snapshot()
+    assert len(calls) == 4  # caché vencida
+
+
+def test_market_feed_offline(populated):
+    from btcbot.web.market import MarketFeed
+
+    m = MarketFeed(populated[0], client=fake_binance([], fail=True)).snapshot()
+    assert m["ok"] is False and "Binance" in m["error"]
+
+
+def test_market_endpoint_requires_login(populated, pw_hash):
+    from btcbot.web.market import MarketFeed
+
+    app = create_app(populated[0], WebSettings(pw_hash, SECRET), db_path=populated[1],
+                     market=MarketFeed(populated[0], client=fake_binance([])))
+    c = TestClient(app, follow_redirects=False)
+    assert c.get("/api/market").status_code == 401
+    c.cookies.set(COOKIE, login(c).cookies[COOKIE])
+    assert c.get("/api/market").json()["ok"] is True

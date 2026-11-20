@@ -35,6 +35,26 @@
         <div id="plain"></div>
       </section>
 
+      <section class="card live">
+        <div class="live-head">
+          <h2><i class="pulse"></i>BTC en vivo</h2>
+          <div class="live-price">
+            <span id="live-price">–</span>
+            <span id="live-change"></span>
+          </div>
+        </div>
+        <div class="legend">
+          <span><i class="dot price"></i>Precio</span>
+          <span><i class="dot fast"></i>Promedio corto</span>
+          <span><i class="dot slow"></i>Promedio medio</span>
+          <span><i class="dot regime"></i>Promedio largo</span>
+          <span class="up">▲ compró</span>
+          <span class="down">▼ vendió</span>
+        </div>
+        <div class="chart-box"><canvas id="market-chart"></canvas></div>
+        <p class="hint" id="live-hint">Velas de 4 horas, últimos 30 días. La última vela todavía se está formando y se mueve con el precio (se actualiza cada 30 s).</p>
+      </section>
+
       <section class="grid kpis">
         <div class="card kpi">
           <div class="label">Tu capital (simulado)</div>
