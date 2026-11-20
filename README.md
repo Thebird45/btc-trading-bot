@@ -18,7 +18,7 @@ Bot de trading para **BTC/USDT** en Binance Spot, escrito en Python. Va por fase
 | 1. Alcance y entorno | ✅ Estructura, configuración, CI |
 | 2. Datos e indicadores | ✅ Descarga, validación e indicadores (EMA, SMA, RSI, MACD, ATR) |
 | 3. Estrategia base | ✅ `ema_trend`: tendencia con EMAs + stop por ATR |
-| 4. Backtesting | 🔄 Motor con stops y costes, holdout reservado; falta walk-forward |
+| 4. Backtesting | ✅ Motor con stops y costes, robustez de parámetros y walk-forward; holdout pendiente |
 | 5. Machine Learning | ⏳ Pendiente |
 | 6. Paper trading | ⏳ Pendiente |
 | 7. Revisión y piloto | ⏳ Pendiente |
@@ -81,7 +81,28 @@ Parámetros estándar fijados antes de ver resultados (EMA 20/50, régimen EMA 2
 | Acierto | 28 % | — |
 | Profit factor | 2,31 | — |
 
-Gana menos en total, pero con mucho menos riesgo (mejor Sharpe y Calmar). Acierta solo el 28 % de las veces y aun así es rentable: las pérdidas son pequeñas (−4 %) y las ganancias grandes (+23 %). Con riesgo del 2 % por operación: CAGR 38,7 % y drawdown −30,5 %. **Todavía no es prueba de nada**: falta el walk-forward, comprobar la robustez de los parámetros y el holdout.
+Gana menos en total, pero con mucho menos riesgo (mejor Sharpe y Calmar). Acierta solo el 28 % de las veces y aun así es rentable: las pérdidas son pequeñas (−4 %) y las ganancias grandes (+23 %). Con riesgo del 2 % por operación: CAGR 38,7 % y drawdown −30,5 %. Por sí solo esto no prueba nada; ver la validación de abajo.
+
+## Validación: robustez y walk-forward
+
+```bash
+uv run btcbot robustness --save    # 300 combinaciones de parámetros, 2017–2024
+uv run btcbot walkforward --save   # entrena 24 meses, prueba 6, avanza; 2019–2024
+```
+
+La rejilla y las ventanas están en `config/default.toml` y se fijaron antes de ver resultados. Ninguno de los dos comandos toca el holdout.
+
+**Robustez** ([informe](reports/robustness_ema_trend.md)): las 300 combinaciones (EMA rápida 10–30, lenta 40–80, régimen 150–250, stop 1,5–3,5×ATR) tienen Sharpe entre 1,29 y 1,68, todas por encima de buy & hold (0,94) y todas con profit factor > 1. Es una meseta amplia, no una isla de suerte.
+
+**Walk-forward** ([informe](reports/walkforward_ema_trend.md)), julio 2019 → diciembre 2024, siempre fuera de muestra:
+
+| | Walk-forward | Parámetros base fijos | Buy & hold |
+|---|---|---|---|
+| CAGR | 14,3 % | 9,3 % | 47,8 % |
+| Sharpe | 1,37 | 1,38 | 0,93 |
+| Drawdown máximo | −11,0 % | −9,3 % | −77,0 % |
+
+Optimizar no mejora el Sharpe frente a los parámetros fijos, y la combinación elegida cambia en casi cada reentrenamiento. Conclusión: **mantener parámetros fijos y simples**; reoptimizar solo agrega riesgo de sobreajuste. El optimizador siempre eligió el stop más ajustado de la rejilla (1,5×ATR): sube el CAGR porque, con el mismo riesgo, permite posiciones más grandes.
 
 ## Configuración
 

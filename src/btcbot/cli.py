@@ -17,6 +17,8 @@ from btcbot.backtest.report import (
     yearly_comparison_table,
     yearly_table,
 )
+from btcbot.backtest.research import RunSettings, robustness, walk_forward
+from btcbot.backtest.research_report import robustness_report, walkforward_report
 from btcbot.config import REPORTS_DIR, Config, load_config
 from btcbot.data.store import candles_path, load_candles, update_candles
 from btcbot.data.validate import validate_candles
@@ -46,7 +48,79 @@ def build_parser() -> argparse.ArgumentParser:
     bt.add_argument("--risk", type=float, default=None,
                     help="Riesgo por operación (fracción), p. ej. 0.01. Por defecto, config.")
     bt.add_argument("--save", action="store_true", help="Guarda informe y operaciones en reports/")
+
+    for name, text in (("robustness", "Rejilla de parámetros dentro de muestra"),
+                       ("walkforward", "Validación walk-forward dentro de muestra")):
+        p = sub.add_parser(name, help=text)
+        p.add_argument("--strategy", default="ema_trend", choices=sorted(STRATEGIES))
+        p.add_argument("--save", action="store_true", help="Guarda el informe en reports/")
     return parser
+
+
+def research_inputs(cfg: Config, strategy: str):
+    """Velas anteriores al holdout, ajustes de corrida y rejilla. Nunca toca el holdout."""
+    m, c = cfg.market, cfg.costs
+    df = load_candles(candles_path(m.symbol, m.timeframe))
+    if df.empty:
+        raise SystemExit("No hay datos. Corre primero: uv run btcbot download")
+    if strategy not in cfg.grid:
+        raise SystemExit(f"Falta [grid.{strategy}] en la configuración")
+    holdout = pd.Timestamp(cfg.validation.holdout_start, tz="UTC")
+    settings = RunSettings(
+        timeframe=m.timeframe, periods_per_year=periods_per_year(m.timeframe),
+        initial_capital=cfg.backtest.initial_capital, fee_rate=c.fee_rate,
+        slippage_rate=c.slippage_rate, risk_per_trade=cfg.risk.risk_per_trade,
+        max_position_fraction=cfg.risk.max_position_fraction,
+    )
+    return df[df.index < holdout], holdout, settings, cfg.grid[strategy]
+
+
+def save_report(text: str, name: str, save: bool) -> None:
+    print(text)
+    if save:
+        out = REPORTS_DIR / name
+        out.write_text(text + "\n", encoding="utf-8")
+        print(f"\nInforme guardado en {out}")
+
+
+def cmd_robustness(cfg: Config, args) -> int:
+    df, holdout, s, grid = research_inputs(cfg, args.strategy)
+    table = robustness(df, slice(None), args.strategy, grid, s)
+    bh = buy_and_hold(df, s.timeframe, s.initial_capital, s.fee_rate, s.slippage_rate)
+    bh_sharpe = equity_metrics(bh, s.periods_per_year).sharpe
+    period = f"{df.index[0]:%Y-%m-%d} → {holdout:%Y-%m-%d}"
+    text = robustness_report(
+        table, cfg.strategy.get(args.strategy, {}), bh_sharpe, period,
+        f"# Robustez de parámetros `{args.strategy}` — {cfg.market.symbol} {s.timeframe}",
+    )
+    save_report(text, f"robustness_{args.strategy}.md", args.save)
+    return 0
+
+
+def cmd_walkforward(cfg: Config, args) -> int:
+    df, holdout, s, grid = research_inputs(cfg, args.strategy)
+    w = cfg.walkforward
+    result = walk_forward(
+        df, args.strategy, grid, cfg.strategy.get(args.strategy, {}), s,
+        first_test=pd.Timestamp(w["first_test"], tz="UTC"), end=holdout,
+        train_months=w["train_months"], test_months=w["test_months"],
+        min_train_trades=w["min_train_trades"],
+    )
+    ppy = s.periods_per_year
+    settings = (
+        f"Entrena {w['train_months']} meses, elige la combinación de mayor Sharpe "
+        f"(mínimo {w['min_train_trades']} operaciones) entre las de la rejilla y la aplica "
+        f"los {w['test_months']} meses siguientes. Riesgo {s.risk_per_trade:.2%} por operación. "
+        "Todo antes del holdout."
+    )
+    text = walkforward_report(
+        result.windows, equity_metrics(result.equity, ppy),
+        equity_metrics(result.fixed_equity, ppy), equity_metrics(result.buy_hold_equity, ppy),
+        result.trades,
+        f"# Walk-forward `{args.strategy}` — {cfg.market.symbol} {s.timeframe}", settings,
+    )
+    save_report(text, f"walkforward_{args.strategy}.md", args.save)
+    return 0
 
 
 def select_period(df, cfg: Config, start, end, holdout: bool):
@@ -215,6 +289,10 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(cmd_baseline(cfg, args.start, args.end, args.save))
     elif args.command == "backtest":
         sys.exit(cmd_backtest(cfg, args))
+    elif args.command == "robustness":
+        sys.exit(cmd_robustness(cfg, args))
+    elif args.command == "walkforward":
+        sys.exit(cmd_walkforward(cfg, args))
 
 
 if __name__ == "__main__":
