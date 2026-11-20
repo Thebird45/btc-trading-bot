@@ -23,7 +23,7 @@ holdout_start = "2025-01-01"
 
 [risk]
 # Fracción del capital que se arriesga por operación (distancia entrada → stop)
-risk_per_trade = 0.005
+risk_per_trade = 0.01
 # Máxima fracción del capital invertida en una posición (1.0 = sin apalancamiento)
 max_position_fraction = 1.0
 
