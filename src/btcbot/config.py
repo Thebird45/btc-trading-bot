@@ -50,6 +50,8 @@ class Config:
     validation: ValidationConfig
     risk: RiskConfig
     strategy: dict[str, dict] = field(default_factory=dict)
+    grid: dict[str, dict] = field(default_factory=dict)
+    walkforward: dict = field(default_factory=dict)
 
 
 def load_config(path: Path | str = DEFAULT_CONFIG) -> Config:
@@ -62,4 +64,6 @@ def load_config(path: Path | str = DEFAULT_CONFIG) -> Config:
         validation=ValidationConfig(**raw["validation"]),
         risk=RiskConfig(**raw["risk"]),
         strategy=raw.get("strategy", {}),
+        grid=raw.get("grid", {}),
+        walkforward=raw.get("walkforward", {}),
     )
