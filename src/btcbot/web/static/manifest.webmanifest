@@ -1,0 +1,12 @@
+{
+  "name": "BTC Bot",
+  "short_name": "BTC Bot",
+  "description": "Seguimiento del bot de trading BTC/USDT",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0e14",
+  "theme_color": "#0b0e14",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

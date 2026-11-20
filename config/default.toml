@@ -63,3 +63,10 @@ max_stale_candles = 2
 poll_seconds = 30
 # Zona horaria para mostrar fechas en avisos y en la web
 display_tz = "America/Bogota"
+
+[web]
+host = "127.0.0.1"
+port = 8000
+# Duración de la sesión iniciada
+session_hours = 72
+# Detrás de HTTPS (Caddy) poner WEB_SECURE_COOKIES=1 y WEB_TRUST_PROXY=1 en .env

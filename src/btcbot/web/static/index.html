@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0b0e14">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="BTC Bot">
+  <title>BTC Bot</title>
+  <link rel="icon" href="/icon.svg">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand"><img src="/icon.svg" alt=""><span id="title">BTC Bot</span></div>
+      <div class="badges">
+        <span class="badge paper">PAPER</span>
+        <span class="badge" id="badge-run">…</span>
+        <span class="badge" id="badge-health">…</span>
+        <form method="post" action="/logout"><button class="link" type="submit">Salir</button></form>
+      </div>
+    </header>
+
+    <div id="not-ready" class="card empty" hidden>
+      El bot todavía no ha procesado ninguna vela. Esta página se actualiza sola.
+    </div>
+
+    <main id="content" hidden>
+      <section class="card plain">
+        <h2>En palabras simples</h2>
+        <div id="plain"></div>
+      </section>
+
+      <section class="card live">
+        <div class="live-head">
+          <h2><i class="pulse"></i>BTC en vivo</h2>
+          <div class="live-price">
+            <span id="live-price">–</span>
+            <span id="live-change"></span>
+          </div>
+        </div>
+        <div class="legend">
+          <span><i class="dot price"></i>Precio</span>
+          <span><i class="dot fast"></i>Promedio corto</span>
+          <span><i class="dot slow"></i>Promedio medio</span>
+          <span><i class="dot regime"></i>Promedio largo</span>
+          <span class="up">▲ compró</span>
+          <span class="down">▼ vendió</span>
+        </div>
+        <div class="chart-box"><canvas id="market-chart"></canvas></div>
+        <p class="hint" id="live-hint">Velas de 4 horas, últimos 30 días. La última vela todavía se está formando y se mueve con el precio (se actualiza cada 30 s).</p>
+      </section>
+
+      <section class="grid kpis">
+        <div class="card kpi">
+          <div class="label">Tu capital (simulado)</div>
+          <div class="value" id="k-equity">–</div>
+          <div class="sub" id="k-equity-sub">–</div>
+        </div>
+        <div class="card kpi">
+          <div class="label">Ganancia del bot</div>
+          <div class="value" id="k-return">–</div>
+          <div class="sub" id="k-bh">–</div>
+        </div>
+        <div class="card kpi">
+          <div class="label">Peor bajón</div>
+          <div class="value" id="k-dd">–</div>
+          <div class="sub" id="k-dd-bh">–</div>
+        </div>
+        <div class="card kpi">
+          <div class="label">Operaciones</div>
+          <div class="value" id="k-trades">–</div>
+          <div class="sub" id="k-trades-sub">–</div>
+        </div>
+      </section>
+
+      <section class="grid two">
+        <div class="card">
+          <h2>¿Tiene BTC ahora?</h2>
+          <div class="rows" id="position"></div>
+        </div>
+        <div class="card">
+          <h2>¿Qué falta para comprar?</h2>
+          <ul class="checks" id="checks"></ul>
+          <div class="rows" id="market"></div>
+        </div>
+      </section>
+
+      <section class="card chart-card">
+        <h2>Tu plata: con el bot vs solo comprar BTC</h2>
+        <div class="legend">
+          <span><i class="dot bot"></i>Con el bot</span>
+          <span><i class="dot bh"></i>Si solo hubieras comprado BTC el primer día</span>
+        </div>
+        <div class="chart-box"><canvas id="chart"></canvas></div>
+        <p class="hint">Cuando la línea naranja queda plana, el bot está fuera del mercado (sin BTC): ni gana ni pierde.</p>
+      </section>
+
+      <section class="grid two">
+        <div class="card">
+          <h2>Operaciones cerradas</h2>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Compró</th><th>Vendió</th><th>Resultado</th></tr></thead>
+              <tbody id="trades"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="trades-empty" hidden>Todavía no hay operaciones cerradas.</div>
+        </div>
+        <div class="card">
+          <h2>Qué ha pasado (registro)</h2>
+          <ul class="events" id="events"></ul>
+        </div>
+      </section>
+    </main>
+
+    <footer id="footer">Cargando…</footer>
+  </div>
+  <script src="/static/vendor/chart.umd.min.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

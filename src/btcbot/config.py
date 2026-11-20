@@ -67,6 +67,7 @@ class Config:
     grid: dict[str, dict] = field(default_factory=dict)
     walkforward: dict = field(default_factory=dict)
     paper: PaperConfig | None = None
+    web: dict = field(default_factory=dict)
 
 
 def load_config(path: Path | str = DEFAULT_CONFIG) -> Config:
@@ -82,4 +83,5 @@ def load_config(path: Path | str = DEFAULT_CONFIG) -> Config:
         grid=raw.get("grid", {}),
         walkforward=raw.get("walkforward", {}),
         paper=PaperConfig(**raw["paper"]) if "paper" in raw else None,
+        web=raw.get("web", {}),
     )

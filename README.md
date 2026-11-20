@@ -20,7 +20,7 @@ Bot de trading para **BTC/USDT** en Binance Spot, escrito en Python. Va por fase
 | 3. Estrategia base | ✅ `ema_trend`: tendencia con EMAs + stop por ATR |
 | 4. Backtesting | ✅ Robustez, walk-forward y prueba final (holdout) aprobada por poco |
 | 5. Machine Learning | ⏳ Pendiente |
-| 6. Paper trading | 🔄 Motor y Telegram listos; faltan web y despliegue |
+| 6. Paper trading | 🔄 Motor, Telegram y web listos; falta despliegue |
 | 7. Revisión y piloto | ⏳ Pendiente |
 
 ## Instalación
@@ -141,6 +141,23 @@ uv run btcbot paper resume
 4. `uv run btcbot telegram test` envía un mensaje de prueba.
 
 Comandos: `/estado`, `/resumen` (desempeño frente a buy & hold), `/operaciones`, `/pausar`, `/reanudar` y `/ayuda`. **Solo responde al chat configurado**; los comandos de otros chats se ignoran. El token nunca se escribe en logs ni en errores.
+
+## Web de seguimiento
+
+```bash
+uv run btcbot web set-password   # define la contraseña (en .env queda solo el hash)
+uv run btcbot web run            # http://127.0.0.1:8000
+```
+
+Panel responsive (celular y PC; en el celular se puede agregar a la pantalla de inicio) con:
+
+- Capital, retorno frente a buy & hold, caída máxima y operaciones.
+- Posición abierta con resultado y stop, o qué está esperando el bot.
+- Qué ve el bot: precio y EMAs, y la condición de compra.
+- Gráfica del capital frente a buy & hold, operaciones cerradas y registro de eventos.
+- Estado: activo o pausado, si los datos están al día y si el bot dejó de responder.
+
+**Seguridad**: login con contraseña (hash PBKDF2), cookie de sesión firmada (`HttpOnly`, `SameSite=Strict`), bloqueo de 15 minutos tras 5 intentos fallidos y cabeceras CSP estrictas, sin scripts externos. La web es **de solo lectura**: los controles están en Telegram.
 
 ## Configuración
 

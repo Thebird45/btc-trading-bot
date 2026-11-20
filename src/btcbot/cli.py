@@ -63,7 +63,77 @@ def build_parser() -> argparse.ArgumentParser:
     tg = sub.add_parser("telegram", help="Configurar y probar Telegram")
     tg.add_argument("action", choices=["chat-id", "test"],
                     help="chat-id: muestra el id de tu chat · test: envía un mensaje de prueba")
+
+    web = sub.add_parser("web", help="Web de seguimiento")
+    web.add_argument("action", choices=["run", "set-password"],
+                     help="run: inicia la web · set-password: define la contraseña")
+    web.add_argument("--host", default=None)
+    web.add_argument("--port", type=int, default=None)
     return parser
+
+
+def set_env_value(key: str, value: str, path=None) -> None:
+    """Escribe o reemplaza KEY=valor en .env sin tocar el resto."""
+    import os
+    import re
+
+    from btcbot.config import ROOT
+
+    path = path or ROOT / ".env"
+    text = path.read_text(encoding="utf-8") if path.exists() else ""
+    line = f"{key}={value}"
+    if re.search(rf"^{key}=.*$", text, flags=re.M):
+        text = re.sub(rf"^{key}=.*$", lambda _: line, text, flags=re.M)
+    else:
+        text = text + ("" if text.endswith("\n") or not text else "\n") + line + "\n"
+    path.write_text(text, encoding="utf-8")
+    os.chmod(path, 0o600)
+
+
+def cmd_web(cfg: Config, args) -> int:
+    import os
+    import secrets
+
+    if args.action == "set-password":
+        import getpass
+
+        from btcbot.web.auth import hash_password
+
+        password = getpass.getpass("Nueva contraseña de la web (mín. 10 caracteres): ")
+        if password != getpass.getpass("Repítela: "):
+            print("No coinciden.")
+            return 1
+        try:
+            set_env_value("WEB_PASSWORD_HASH", hash_password(password))
+        except ValueError as exc:
+            print(exc)
+            return 1
+        if not os.environ.get("WEB_SESSION_SECRET"):
+            set_env_value("WEB_SESSION_SECRET", secrets.token_urlsafe(48))
+        print("Contraseña guardada en .env (solo el hash).")
+        return 0
+
+    import uvicorn
+
+    from btcbot.web.app import WebSettings, create_app
+
+    w = cfg.web or {}
+    settings = WebSettings(
+        password_hash=os.environ.get("WEB_PASSWORD_HASH", ""),
+        session_secret=os.environ.get("WEB_SESSION_SECRET", ""),
+        session_hours=int(w.get("session_hours", 72)),
+        secure_cookies=os.environ.get("WEB_SECURE_COOKIES") == "1",
+        trust_proxy=os.environ.get("WEB_TRUST_PROXY") == "1",
+    )
+    try:
+        app = create_app(cfg, settings)
+    except ValueError as exc:
+        print(exc)
+        return 1
+    uvicorn.run(app, host=args.host or w.get("host", "127.0.0.1"),
+                port=args.port or int(w.get("port", 8000)),
+                proxy_headers=settings.trust_proxy, server_header=False)
+    return 0
 
 
 def telegram_client():
@@ -408,6 +478,8 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(cmd_paper(cfg, args.action))
     elif args.command == "telegram":
         sys.exit(cmd_telegram(args.action))
+    elif args.command == "web":
+        sys.exit(cmd_web(cfg, args))
 
 
 if __name__ == "__main__":
