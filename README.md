@@ -20,7 +20,7 @@ Bot de trading para **BTC/USDT** en Binance Spot, escrito en Python. Va por fase
 | 3. Estrategia base | ✅ `ema_trend`: tendencia con EMAs + stop por ATR |
 | 4. Backtesting | ✅ Robustez, walk-forward y prueba final (holdout) aprobada por poco |
 | 5. Machine Learning | ⏳ Pendiente |
-| 6. Paper trading | ⏳ Pendiente |
+| 6. Paper trading | 🔄 Motor listo (mismo broker que el backtest); faltan Telegram, web y despliegue |
 | 7. Revisión y piloto | ⏳ Pendiente |
 
 ## Instalación
@@ -117,6 +117,21 @@ Los criterios de aprobación se escribieron y se subieron **antes** de ejecutarl
 | Profit factor | 1,18 | — |
 
 **Aprueba los 4 criterios, pero por poco.** En un mercado bajista protegió el capital, aunque ganó poco: menos que un producto de ahorro. Con 35 operaciones, la expectativa no se distingue estadísticamente de cero. Este periodo ya está usado; la siguiente evidencia tiene que venir del paper trading.
+
+## Paper trading (dinero simulado, datos reales)
+
+```bash
+uv run btcbot paper run      # loop continuo: revisa cada 30 s si cerró una vela de 4h
+uv run btcbot paper once     # una sola revisión
+uv run btcbot paper status   # capital, posición y lectura del mercado
+uv run btcbot paper pause    # interruptor de emergencia: no abre compras nuevas
+uv run btcbot paper resume
+```
+
+- **Misma lógica que el backtest**: ambos usan el mismo broker simulado (`backtest/broker.py`). Un test comprueba que, vela a vela, el paper trading da exactamente las mismas operaciones y la misma curva que el backtest.
+- **Estado en SQLite** (`data/paper.db`): cuenta, operaciones, curva de capital y registro de eventos. Cada vela se guarda en una transacción y, si el bot se reinicia, sigue donde quedó y recupera las velas que se perdió.
+- **Protecciones**: la pausa bloquea compras pero mantiene ventas y stops; límite de pérdida diaria del 3 %; si los datos llegan atrasados, no opera y avisa una sola vez.
+- **Avisos**: compras, ventas, stops, señales bloqueadas, errores y un resumen diario (después del cierre de las 00:00 UTC, 19:00 en Colombia). Por ahora salen en el log; Telegram viene en el siguiente PR.
 
 ## Configuración
 

@@ -43,6 +43,20 @@ class RiskConfig:
 
 
 @dataclass(frozen=True)
+class PaperConfig:
+    db_path: str
+    initial_capital: float
+    daily_loss_limit: float
+    max_stale_candles: int
+    poll_seconds: int
+    display_tz: str
+
+    def db_file(self) -> Path:
+        path = Path(self.db_path)
+        return path if path.is_absolute() else ROOT / path
+
+
+@dataclass(frozen=True)
 class Config:
     market: MarketConfig
     costs: CostsConfig
@@ -52,6 +66,7 @@ class Config:
     strategy: dict[str, dict] = field(default_factory=dict)
     grid: dict[str, dict] = field(default_factory=dict)
     walkforward: dict = field(default_factory=dict)
+    paper: PaperConfig | None = None
 
 
 def load_config(path: Path | str = DEFAULT_CONFIG) -> Config:
@@ -66,4 +81,5 @@ def load_config(path: Path | str = DEFAULT_CONFIG) -> Config:
         strategy=raw.get("strategy", {}),
         grid=raw.get("grid", {}),
         walkforward=raw.get("walkforward", {}),
+        paper=PaperConfig(**raw["paper"]) if "paper" in raw else None,
     )

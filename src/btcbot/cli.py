@@ -54,7 +54,54 @@ def build_parser() -> argparse.ArgumentParser:
         p = sub.add_parser(name, help=text)
         p.add_argument("--strategy", default="ema_trend", choices=sorted(STRATEGIES))
         p.add_argument("--save", action="store_true", help="Guarda el informe en reports/")
+
+    pp = sub.add_parser("paper", help="Paper trading en vivo (dinero simulado)")
+    pp.add_argument("action", choices=["run", "once", "status", "pause", "resume"],
+                    help="run: loop continuo · once: una revisión · status/pause/resume")
     return parser
+
+
+def build_paper_trader(cfg: Config):
+    from btcbot.live.notifier import LogNotifier, MultiNotifier
+    from btcbot.live.paper import PaperTrader
+    from btcbot.live.store import PaperStore
+
+    m = cfg.market
+
+    def source() -> pd.DataFrame:
+        df, _ = update_candles(m.symbol, m.timeframe, m.history_start,
+                               lambda sym, tf, start: fetch_klines(sym, tf, start))
+        return df
+
+    store = PaperStore(cfg.paper.db_file())
+    return PaperTrader(cfg, store, MultiNotifier(LogNotifier()), source)
+
+
+def cmd_paper(cfg: Config, action: str) -> int:
+    import logging
+    import signal
+    import threading
+
+    from btcbot.live.paper import run_forever
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    trader = build_paper_trader(cfg)
+    if action == "status":
+        print(trader.status_text())
+    elif action == "pause":
+        print(trader.pause("CLI"))
+    elif action == "resume":
+        print(trader.resume("CLI"))
+    elif action == "once":
+        result = trader.tick()
+        print(result.skipped or f"{result.processed} velas procesadas")
+        print(trader.status_text())
+    elif action == "run":
+        stop = threading.Event()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            signal.signal(sig, lambda *_: stop.set())
+        run_forever(trader, stop)
+    return 0
 
 
 def research_inputs(cfg: Config, strategy: str):
@@ -293,6 +340,8 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(cmd_robustness(cfg, args))
     elif args.command == "walkforward":
         sys.exit(cmd_walkforward(cfg, args))
+    elif args.command == "paper":
+        sys.exit(cmd_paper(cfg, args.action))
 
 
 if __name__ == "__main__":
