@@ -41,7 +41,7 @@ fi
 echo "==> Respaldo diario de la base de datos (03:30 hora del servidor)"
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 CRON_LINE="30 3 * * * bash $REPO_DIR/deploy/backup.sh >> $REPO_DIR/data/backup.log 2>&1"
-( crontab -l 2>/dev/null | grep -v 'deploy/backup.sh' ; echo "$CRON_LINE" ) | crontab -
+{ crontab -l 2>/dev/null | grep -v 'deploy/backup.sh' || true; echo "$CRON_LINE"; } | crontab -
 
 echo
 echo "Listo. Cierra la sesión SSH y vuelve a entrar (para usar docker sin sudo)."
