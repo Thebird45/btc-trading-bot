@@ -97,6 +97,18 @@ En uno o dos minutos:
 
 El bot se reinicia solo si se cae, y también al reiniciar la VM (`restart: unless-stopped`). Si estuvo apagado, al volver procesa las velas que se perdió.
 
+## Alarma si el servidor se cae
+
+El workflow `.github/workflows/monitor.yml` revisa cada 30 minutos `https://tu-dominio/health` (la única ruta pública: solo dice "ok" o el motivo de la falla). Si no responde, si el bot dejó de revisar el mercado o si los datos están atrasados, llega un 🚨 a Telegram. Configuración, una sola vez en tu PC:
+
+```bash
+grep '^TELEGRAM_BOT_TOKEN=' .env | cut -d= -f2- | tr -d '\n' | gh secret set TELEGRAM_BOT_TOKEN
+grep '^TELEGRAM_CHAT_ID=' .env | cut -d= -f2- | tr -d '\n' | gh secret set TELEGRAM_CHAT_ID
+gh variable set HEALTH_URL --body "https://tu-dominio/health"
+```
+
+GitHub pausa los workflows programados de repos públicos tras 60 días sin actividad en el repo: si eso pasa, te avisa por correo y se reactiva con un clic.
+
 ## Restaurar un respaldo de Telegram
 
 Si se pierde la VM (o se migra a otra), descarga el último `paper-AAAA-MM-DD.db.gz` del chat del bot y:

@@ -212,3 +212,42 @@ def test_market_endpoint_requires_login(populated, pw_hash):
     assert c.get("/api/market").status_code == 401
     c.cookies.set(COOKIE, login(c).cookies[COOKIE])
     assert c.get("/api/market").json()["ok"] is True
+
+
+# --- salud ------------------------------------------------------------------------------
+
+def test_health_is_public_and_ok_when_bot_alive(populated, pw_hash):
+    from btcbot.live.store import PaperStore
+
+    cfg, db = populated
+    PaperStore(db).set("last_tick", pd.Timestamp.now(tz="UTC").isoformat())
+    c = client_for(cfg, db, pw_hash)
+    r = c.get("/health")
+    assert r.status_code == 200 and r.json() == {"status": "ok"}
+
+
+def test_health_fails_when_bot_silent(populated):
+    from btcbot.live.store import PaperStore
+    from btcbot.web.health import check_health
+
+    cfg, db = populated
+    old = pd.Timestamp.now(tz="UTC") - pd.Timedelta(hours=1)
+    PaperStore(db).set("last_tick", old.isoformat())
+    assert check_health(cfg, db) == (False, "el bot no responde")
+
+
+def test_health_without_db(populated, tmp_path):
+    from btcbot.web.health import check_health
+
+    assert check_health(populated[0], tmp_path / "nada.db") == (False, "sin base de datos")
+
+
+def test_health_reports_stale_data(populated):
+    from btcbot.live.store import PaperStore
+    from btcbot.web.health import check_health
+
+    cfg, db = populated
+    store = PaperStore(db)
+    store.set("last_tick", pd.Timestamp.now(tz="UTC").isoformat())
+    store.set("stale", True)
+    assert check_health(cfg, db) == (False, "datos atrasados")
