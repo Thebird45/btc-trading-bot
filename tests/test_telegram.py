@@ -123,3 +123,21 @@ def test_load_dotenv(tmp_path, monkeypatch):
     assert os.environ["BTC_TEST_A"] == "uno"
     assert os.environ["BTC_TEST_B"] == "dos"
     assert os.environ["BTC_TEST_C"] == "existente"  # no sobrescribe
+
+
+def test_send_document_is_multipart(tmp_path):
+    seen = {}
+
+    def handler(request):
+        seen["path"] = request.url.path
+        seen["type"] = request.headers["content-type"]
+        seen["body"] = request.content
+        return httpx.Response(200, json={"ok": True, "result": {}})
+
+    f = tmp_path / "paper-2026-11-20.db.gz"
+    f.write_bytes(b"datos-del-respaldo")
+    client_with(handler).send_document(42, f, "💾 Respaldo")
+    assert seen["path"].endswith("/sendDocument")
+    assert seen["type"].startswith("multipart/form-data")
+    assert b"datos-del-respaldo" in seen["body"] and b"paper-2026-11-20.db.gz" in seen["body"]
+    assert b'name="chat_id"' in seen["body"]

@@ -16,10 +16,14 @@ Protecciones (sección 7 del plan):
 
 from __future__ import annotations
 
+import gzip
 import logging
+import shutil
+import tempfile
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -128,25 +132,47 @@ class PaperTrader:
         if new.empty:
             return TickResult(skipped="sin vela nueva")
 
-        signals = self.spec.signals(closed, self.params)
-        result = TickResult()
-        for ts in new.index:
-            with self.store.transaction():
-                fills = self._process(state, ts, closed.loc[ts], signals.loc[ts], messages)
-                self.store.save_state(state)
-                self.store.set_last_candle(ts)
-            result.processed += 1
-            result.fills.extend(fills)
-
+        # La lectura del mercado se guarda antes de procesar: el resumen diario la usa
         if self.spec.snapshot:
             snap = self.spec.snapshot(closed, self.params)
             snap["time"] = (latest + self.step).isoformat()
             self.store.set("snapshot", snap)
 
+        signals = self.spec.signals(closed, self.params)
+        result = TickResult()
+        backup_days: list[str] = []
+        for ts in new.index:
+            with self.store.transaction():
+                fills = self._process(state, ts, closed.loc[ts], signals.loc[ts], messages,
+                                      backup_days)
+                self.store.save_state(state)
+                self.store.set_last_candle(ts)
+            result.processed += 1
+            result.fills.extend(fills)
+
         # Avisos solo después de guardar: nunca se avisa algo que no quedó registrado
         for msg in messages:
             self.notifier.send(msg)
+        for day in backup_days[-1:]:  # si se recuperaron varios días, basta el último
+            self._send_backup(day)
         return result
+
+    def _send_backup(self, day: str) -> None:
+        """Copia consistente de la base, comprimida, enviada a Telegram tras el resumen diario."""
+        send_file = getattr(self.notifier, "send_file", None)
+        if not self.p.telegram_backup or send_file is None:
+            return
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                raw = Path(tmp) / "paper.db"
+                self.store.backup_to(raw)
+                packed = Path(tmp) / f"paper-{day}.db.gz"
+                with open(raw, "rb") as src, gzip.open(packed, "wb") as dst:
+                    shutil.copyfileobj(src, dst)
+                send_file(packed, f"💾 Respaldo del {day} ({packed.stat().st_size / 1024:.0f} KB)."
+                                  " Para restaurarlo: docs/despliegue.md")
+        except Exception:  # un respaldo fallido nunca debe tumbar el bot
+            log.exception("No se pudo enviar el respaldo diario")
 
     # --- piezas -------------------------------------------------------------------
     def _start(self, now: pd.Timestamp, first: pd.Timestamp, open_price: float,
@@ -163,7 +189,8 @@ class PaperTrader:
         messages.append(msg)
 
     def _process(self, state: AccountState, ts: pd.Timestamp, candle: pd.Series,
-                 sig: pd.Series, messages: list[str]) -> list[Fill]:
+                 sig: pd.Series, messages: list[str],
+                 backup_days: list[str] | None = None) -> list[Fill]:
         close_time = ts + self.step
         day = str((close_time - pd.Timedelta(microseconds=1)).date())
         day_info = self.store.get("day")
@@ -222,6 +249,8 @@ class PaperTrader:
                 close_time - pd.Timedelta(microseconds=1)).date():
             messages.append(self._daily_summary(day, day_info["start_equity"], equity, state,
                                                 close))
+            if backup_days is not None:
+                backup_days.append(day)
         return fills
 
     def _fill_message(self, f: Fill, state: AccountState) -> str:

@@ -181,3 +181,45 @@ def test_performance_and_trades_text(tmp_path, candles):
     perf = trader.performance_text()
     assert "Buy & hold" in perf and "Profit factor" in perf
     assert trader.trades_text().startswith("Últimas 5 operaciones")
+
+
+def test_first_daily_summary_has_market_reading(tmp_path, candles):
+    trader, _, notifier = make_trader(tmp_path, candles)
+    for i in range(300, 330):
+        trader.tick(after_close(candles, i))
+    summaries = [m for m in notifier.messages if m.startswith("📊 Resumen")]
+    assert summaries
+    assert all("Mercado: Tendencia" in m for m in summaries)
+
+
+def test_daily_backup_is_a_valid_database(tmp_path, candles):
+    import gzip
+    import sqlite3
+
+    trader, store, notifier = make_trader(tmp_path, candles)
+    for i in range(300, 330):  # unos 5 días
+        trader.tick(after_close(candles, i))
+    days = sum(m.startswith("📊 Resumen") for m in notifier.messages)
+    assert len(notifier.files) == days >= 4
+    name, data, caption = notifier.files[-1]
+    assert name.startswith("paper-") and name.endswith(".db.gz") and "Respaldo" in caption
+    restored = tmp_path / "restaurada.db"
+    restored.write_bytes(gzip.decompress(data))
+    con = sqlite3.connect(restored)
+    assert con.execute("SELECT COUNT(*) FROM equity").fetchone()[0] > 20
+    assert con.execute("SELECT value FROM kv WHERE key='account'").fetchone()
+
+
+def test_catch_up_sends_only_one_backup(tmp_path, candles):
+    trader, _, notifier = make_trader(tmp_path, candles)
+    trader.tick(after_close(candles, 300))
+    trader.tick(after_close(candles, 330))  # recupera ~5 días de golpe
+    assert len(notifier.files) == 1
+
+
+def test_backup_can_be_disabled(tmp_path, candles):
+    trader, _, notifier = make_trader(tmp_path, candles)
+    trader.p = dataclasses.replace(trader.p, telegram_backup=False)
+    for i in range(300, 320):
+        trader.tick(after_close(candles, i))
+    assert notifier.files == []

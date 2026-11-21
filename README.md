@@ -132,6 +132,7 @@ uv run btcbot paper resume
 - **Estado en SQLite** (`data/paper.db`): cuenta, operaciones, curva de capital y registro de eventos. Cada vela se guarda en una transacción y, si el bot se reinicia, sigue donde quedó y recupera las velas que se perdió.
 - **Protecciones**: la pausa bloquea compras pero mantiene ventas y stops; límite de pérdida diaria del 3 %; si los datos llegan atrasados, no opera y avisa una sola vez.
 - **Avisos**: compras, ventas, stops, señales bloqueadas, errores y un resumen diario (después del cierre de las 00:00 UTC, 19:00 en Colombia), en el log y por Telegram.
+- **Respaldo por Telegram**: tras cada resumen diario llega la base comprimida (`paper-AAAA-MM-DD.db.gz`), así el historial sobrevive aunque se pierda el servidor ([cómo restaurar](docs/despliegue.md#restaurar-un-respaldo-de-telegram)).
 
 ### Telegram
 

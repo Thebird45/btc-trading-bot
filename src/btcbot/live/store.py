@@ -76,6 +76,15 @@ class PaperStore:
     def close(self) -> None:
         self._conn.close()
 
+    def backup_to(self, path: Path | str) -> None:
+        """Copia consistente de toda la base (API de backup de SQLite)."""
+        with self._lock:
+            dest = sqlite3.connect(path)
+            try:
+                self._conn.backup(dest)
+            finally:
+                dest.close()
+
     @contextmanager
     def transaction(self) -> Iterator[None]:
         """Agrupa escrituras: o se guardan todas o ninguna (p. ej. si el proceso muere)."""
