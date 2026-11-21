@@ -50,6 +50,7 @@ class PaperConfig:
     max_stale_candles: int
     poll_seconds: int
     display_tz: str
+    telegram_backup: bool = True
 
     def db_file(self) -> Path:
         path = Path(self.db_path)

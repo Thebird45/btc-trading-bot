@@ -92,10 +92,22 @@ En uno o dos minutos:
 | Ver logs | `docker compose logs -f bot` (o `web`, `caddy`) |
 | Actualizar a la última versión de `main` | `bash deploy/update.sh` |
 | Reiniciar | `docker compose restart` |
-| Respaldos | Automáticos a las 03:30 en `data/backups/` (14 días) |
+| Respaldos | Automáticos a las 03:30 en `data/backups/` (14 días) y **por Telegram** tras cada resumen diario (`paper-AAAA-MM-DD.db.gz`) |
 | Bajar un respaldo a tu PC | `scp ubuntu@IP:~/btc-trading-bot/data/backups/paper-AAAAMMDD.db .` |
 
 El bot se reinicia solo si se cae, y también al reiniciar la VM (`restart: unless-stopped`). Si estuvo apagado, al volver procesa las velas que se perdió.
+
+## Restaurar un respaldo de Telegram
+
+Si se pierde la VM (o se migra a otra), descarga el último `paper-AAAA-MM-DD.db.gz` del chat del bot y:
+
+```bash
+gunzip paper-AAAA-MM-DD.db.gz
+scp paper-AAAA-MM-DD.db ubuntu@IP_NUEVA:~/btc-trading-bot/data/paper.db
+ssh ubuntu@IP_NUEVA 'cd btc-trading-bot && sudo chown 1000:1000 data/paper.db && docker compose restart bot web'
+```
+
+El bot sigue desde donde quedó el respaldo y recupera solo las velas que faltan.
 
 ## Problemas comunes
 

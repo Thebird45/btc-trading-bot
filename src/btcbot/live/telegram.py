@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 import threading
 from collections.abc import Callable
+from pathlib import Path
 
 import httpx
 
@@ -33,9 +34,13 @@ class TelegramClient:
             raise ValueError("Falta el token de Telegram")
         self._client = client or httpx.Client(base_url=f"{API}/bot{token}", timeout=timeout)
 
-    def call(self, method: str, **params) -> dict | list:
+    def call(self, method: str, files: dict | None = None, **params) -> dict | list:
         try:
-            resp = self._client.post(f"/{method}", json=params)
+            if files:
+                data = {k: str(v) for k, v in params.items()}
+                resp = self._client.post(f"/{method}", data=data, files=files)
+            else:
+                resp = self._client.post(f"/{method}", json=params)
         except httpx.HTTPError as exc:
             raise TelegramError(f"sin conexión con Telegram ({type(exc).__name__})") from None
         try:
@@ -51,6 +56,11 @@ class TelegramClient:
             self.call("sendMessage", chat_id=chat_id, text=text[i:i + MAX_LEN],
                       disable_web_page_preview=True)
 
+    def send_document(self, chat_id: str | int, path: Path, caption: str = "") -> None:
+        with open(path, "rb") as f:
+            self.call("sendDocument", files={"document": (path.name, f)}, chat_id=chat_id,
+                      caption=caption[:1000])
+
     def get_updates(self, offset: int | None, timeout: int = 50) -> list[dict]:
         params = {"timeout": timeout, "allowed_updates": ["message"]}
         if offset is not None:
@@ -65,6 +75,9 @@ class TelegramNotifier:
 
     def send(self, text: str) -> None:
         self.client.send_message(self.chat_id, text)
+
+    def send_file(self, path: Path, caption: str) -> None:
+        self.client.send_document(self.chat_id, path, caption)
 
 
 HELP = """🤖 Comandos del bot
