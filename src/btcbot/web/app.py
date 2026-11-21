@@ -16,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from btcbot.config import Config
 from btcbot.web.auth import LoginLimiter, SessionSigner, verify_password
 from btcbot.web.dashboard import build_dashboard
+from btcbot.web.health import check_health
 from btcbot.web.market import MarketFeed
 
 STATIC = Path(__file__).parent / "static"
@@ -64,8 +65,8 @@ def create_app(cfg: Config, settings: WebSettings, db_path: Path | None = None,
 
     @app.middleware("http")
     async def security(request: Request, call_next):
-        public = request.url.path in ("/login", "/logout", "/manifest.webmanifest", "/icon.svg",
-                                      "/static/style.css")
+        public = request.url.path in ("/login", "/logout", "/health", "/manifest.webmanifest",
+                                      "/icon.svg", "/static/style.css")
         if not public and not logged_in(request):
             if request.url.path.startswith("/api/"):
                 response: Response = JSONResponse({"error": "no autenticado"}, status_code=401)
@@ -108,6 +109,11 @@ def create_app(cfg: Config, settings: WebSettings, db_path: Path | None = None,
     @app.get("/api/dashboard")
     def dashboard():
         return build_dashboard(cfg, db_path)
+
+    @app.get("/health")
+    def health():
+        ok, reason = check_health(cfg, db_path)
+        return JSONResponse({"status": reason}, status_code=200 if ok else 503)
 
     @app.get("/api/market")
     def market_data():
